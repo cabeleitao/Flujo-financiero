@@ -1,0 +1,622 @@
+<!DOCTYPE html>
+<html lang="es-AR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tesorería — Obligaciones Financieras</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Bricolage+Grotesque:opsz,wght@12..96,500..800&display=swap" rel="stylesheet">
+<style>
+/* ============ TOKENS ============ */
+:root{
+  --ink:#101C31;
+  --ink-2:#1B2C48;
+  --paper:#F5F2EA;
+  --paper-2:#EDE8DB;
+  --card:#FFFFFF;
+  --line:#DFD8C6;
+  --text:#232323;
+  --text-muted:#6B6255;
+  --amber:#C1811F;
+  --amber-bg:#FBEED7;
+  --green:#2E6E4E;
+  --green-bg:#E1EFE4;
+  --red:#A63B32;
+  --red-bg:#F6E1DD;
+  --slate:#445066;
+  --radius:10px;
+  --font-display:'Fraunces', serif;
+  --font-body:'Inter', system-ui, sans-serif;
+  --font-mono:'IBM Plex Mono', monospace;
+  --font-switch:'Bricolage Grotesque', sans-serif;
+}
+*{box-sizing:border-box;}
+html,body{margin:0;padding:0;}
+body{
+  background:var(--paper);
+  color:var(--text);
+  font-family:var(--font-body);
+  -webkit-font-smoothing:antialiased;
+}
+::selection{background:var(--amber-bg);}
+a{color:inherit;}
+button{font-family:inherit;}
+:focus-visible{outline:2px solid var(--amber);outline-offset:2px;}
+
+/* ============ HEADER ============ */
+header.top{
+  background:linear-gradient(180deg,var(--ink) 0%, var(--ink-2) 100%);
+  color:#EDE9DD;
+  padding:28px 32px 22px;
+}
+.top-inner{max-width:1240px;margin:0 auto;}
+.eyebrow{
+  font-family:var(--font-mono);
+  font-size:11px;
+  letter-spacing:.14em;
+  text-transform:uppercase;
+  color:#9FB0C8;
+  margin:0 0 6px;
+}
+.title-row{display:flex;align-items:flex-end;justify-content:space-between;flex-wrap:wrap;gap:14px;}
+h1{
+  font-family:var(--font-display);
+  font-optical-sizing:auto;
+  font-weight:600;
+  font-size:34px;
+  margin:0;
+  letter-spacing:-0.01em;
+}
+.sync-status{
+  font-family:var(--font-mono);
+  font-size:12px;
+  color:#9FB0C8;
+  text-align:right;
+}
+.sync-status .dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:#6FBF8F;margin-right:6px;position:relative;top:-1px;}
+.sync-status.demo .dot{background:var(--amber);}
+.sync-status.error .dot{background:#D97757;}
+
+/* ============ RIBBON (signature element, colapsable) ============ */
+.ribbon-wrap{max-width:1240px;margin:22px auto 0;padding:0 32px;}
+.ribbon-toggle{
+  width:100%;display:flex;align-items:center;gap:10px;
+  background:var(--card);border:1px solid var(--line);border-radius:8px;
+  padding:11px 16px;cursor:pointer;text-align:left;
+}
+.ribbon-toggle .ribbon-title{
+  font-family:var(--font-mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;
+  color:var(--text-muted);
+}
+.ribbon-toggle .count-badge{
+  font-family:var(--font-mono);font-size:11px;font-weight:600;
+  background:var(--amber-bg);color:var(--amber);border-radius:100px;padding:2px 8px;
+}
+.ribbon-toggle .earliest{
+  font-family:var(--font-mono);font-size:12px;color:var(--text-muted);margin-left:2px;
+}
+.ribbon-toggle .spacer{flex:1;}
+.ribbon-toggle .chevron{color:var(--text-muted);transition:transform .15s;}
+.ribbon-toggle .chevron.open{transform:rotate(180deg);}
+.ribbon{
+  display:flex;gap:12px;overflow-x:auto;padding:12px 2px 4px;
+  scrollbar-width:thin;
+}
+.ribbon.hidden{display:none;}
+.stub{
+  flex:0 0 auto;
+  width:168px;
+  background:var(--card);
+  border:1px solid var(--line);
+  border-radius:8px;
+  position:relative;
+  padding:14px 14px 12px;
+  cursor:default;
+}
+.stub::before{
+  content:'';position:absolute;left:-6px;top:50%;transform:translateY(-50%);
+  width:12px;height:12px;border-radius:50%;background:var(--paper);border:1px solid var(--line);
+}
+.stub::after{
+  content:'';position:absolute;right:-6px;top:50%;transform:translateY(-50%);
+  width:12px;height:12px;border-radius:50%;background:var(--paper);border:1px solid var(--line);
+}
+.stub .stub-days{font-family:var(--font-mono);font-size:11px;color:var(--text-muted);margin-bottom:6px;}
+.stub .stub-empresa{font-weight:600;font-size:13px;margin-bottom:2px;}
+.stub .stub-concepto{font-size:12px;color:var(--text-muted);margin-bottom:8px;}
+.stub .stub-importe{font-family:var(--font-mono);font-size:15px;font-weight:600;font-variant-numeric:tabular-nums;}
+.stub.due-soon{border-left:3px solid var(--amber);}
+.stub.overdue{border-left:3px solid var(--red);}
+
+/* ============ FILTER BAR ============ */
+.filters{
+  max-width:1240px;margin:26px auto 0;padding:0 32px;
+  display:flex;gap:10px;flex-wrap:wrap;align-items:center;
+}
+.filters select, .filters input[type="search"]{
+  font-family:var(--font-body);font-size:13px;
+  border:1px solid var(--line);border-radius:7px;
+  background:var(--card);color:var(--text);
+  padding:8px 12px;
+}
+.filters input[type="search"]{min-width:220px;flex:1;}
+.view-toggle{display:flex;border:1px solid var(--line);border-radius:7px;overflow:hidden;margin-left:auto;}
+.view-toggle button{
+  font-family:var(--font-switch);font-weight:700;font-optical-sizing:auto;letter-spacing:.01em;text-transform:uppercase;
+  border:none;background:var(--card);padding:8px 16px;font-size:13px;cursor:pointer;color:var(--text-muted);
+  transition:background .12s,color .12s;
+}
+.view-toggle button.active{background:var(--ink);color:#fff;}
+.view-toggle button:not(:last-child){border-right:1px solid var(--line);}
+
+/* ============ TABLE / GROUPS ============ */
+.content{max-width:1240px;margin:22px auto 60px;padding:0 32px;}
+.group{margin-bottom:22px;border:1px solid var(--line);border-radius:var(--radius);overflow:hidden;background:var(--card);}
+.group-header{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:12px 18px;background:var(--paper-2);cursor:pointer;user-select:none;
+  border-bottom:1px solid var(--line);
+}
+.group-header h3{
+  font-family:var(--font-display);font-size:17px;font-weight:600;margin:0;
+  text-transform:capitalize;
+}
+.group-header .meta{display:flex;gap:8px;align-items:center;flex-wrap:wrap;}
+.group-header .chevron{transition:transform .15s;color:var(--text-muted);margin-left:2px;}
+.group.collapsed .chevron{transform:rotate(-90deg);}
+.group.collapsed .rows{display:none;}
+
+.gchip{
+  font-family:var(--font-mono);font-size:11.5px;font-weight:600;
+  padding:4px 10px;border-radius:100px;white-space:nowrap;
+}
+.gchip.total{background:var(--ink);color:#fff;}
+.gchip.pendiente{background:var(--amber-bg);color:var(--amber);}
+.gchip.pagado{background:var(--green-bg);color:var(--green);}
+.gchip.vencido{background:var(--red-bg);color:var(--red);}
+.gchip-count{font-size:12px;color:var(--text-muted);font-family:var(--font-mono);}
+
+table{width:100%;border-collapse:collapse;}
+thead th{
+  text-align:left;font-size:11px;letter-spacing:.06em;text-transform:uppercase;
+  color:var(--text-muted);font-weight:600;padding:10px 18px;border-bottom:1px solid var(--line);
+}
+tbody td{padding:11px 18px;border-bottom:1px solid var(--line);font-size:13.5px;vertical-align:middle;}
+tbody tr:last-child td{border-bottom:none;}
+tbody tr:hover{background:#FCFBF7;}
+td.empresa{font-weight:600;}
+td.importe{font-family:var(--font-mono);font-variant-numeric:tabular-nums;text-align:right;white-space:nowrap;}
+td.vencimiento{font-family:var(--font-mono);white-space:nowrap;color:var(--slate);}
+.badge{
+  display:inline-flex;align-items:center;gap:5px;padding:3px 9px;border-radius:100px;
+  font-size:11px;font-weight:600;letter-spacing:.02em;
+}
+.badge.pagado{background:var(--green-bg);color:var(--green);}
+.badge.pendiente{background:var(--amber-bg);color:var(--amber);}
+.badge.vencido{background:var(--red-bg);color:var(--red);}
+.badge .dot{width:6px;height:6px;border-radius:50%;background:currentColor;}
+
+.action-cell{text-align:right;white-space:nowrap;}
+.btn-pay{
+  border:1px solid var(--green);color:var(--green);background:#fff;
+  padding:6px 12px;border-radius:7px;font-size:12.5px;font-weight:600;cursor:pointer;
+}
+.btn-pay:hover{background:var(--green-bg);}
+.btn-undo{
+  border:1px solid var(--line);color:var(--text-muted);background:#fff;
+  padding:6px 10px;border-radius:7px;font-size:12px;cursor:pointer;
+}
+.pay-inline{display:flex;gap:6px;align-items:center;justify-content:flex-end;}
+.pay-inline input[type="date"]{
+  font-family:var(--font-mono);font-size:12.5px;border:1px solid var(--line);border-radius:6px;padding:5px 7px;
+}
+.pay-inline .confirm{
+  border:none;background:var(--green);color:#fff;padding:6px 10px;border-radius:6px;font-size:12px;cursor:pointer;font-weight:600;
+}
+.pay-inline .cancel{border:none;background:none;color:var(--text-muted);font-size:12px;cursor:pointer;padding:6px;}
+.fecha-pago-note{font-size:11px;color:var(--text-muted);margin-top:2px;}
+
+.empty-state{padding:40px 20px;text-align:center;color:var(--text-muted);font-size:14px;}
+
+/* ============ BANNER ============ */
+.banner{
+  max-width:1240px;margin:16px auto 0;padding:11px 18px;border-radius:8px;
+  font-size:13px;display:flex;align-items:center;gap:10px;
+}
+.banner.demo{background:var(--amber-bg);color:#8A5B10;margin-left:32px;margin-right:32px;}
+.banner.error{background:var(--red-bg);color:var(--red);margin-left:32px;margin-right:32px;}
+
+footer{
+  max-width:1240px;margin:0 auto 50px;padding:0 32px;
+  font-size:12px;color:var(--text-muted);font-family:var(--font-mono);
+}
+
+@media (max-width:760px){
+  header.top{padding:22px 18px 18px;}
+  .ribbon-wrap,.filters,.content,.banner,footer{padding-left:18px;padding-right:18px;}
+  thead{display:none;}
+  table, tbody, tr, td{display:block;width:100%;}
+  tbody tr{padding:10px 18px;border-bottom:1px solid var(--line);}
+  tbody td{border-bottom:none;padding:3px 0;}
+  td.importe, td.action-cell{text-align:left;}
+}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="top-inner">
+    <p class="eyebrow">Grupo económico · Control de obligaciones</p>
+    <div class="title-row">
+      <h1>Tesorería</h1>
+      <div class="sync-status" id="syncStatus"><span class="dot"></span><span id="syncText">Cargando…</span></div>
+    </div>
+  </div>
+</header>
+
+<div id="bannerHost"></div>
+
+<div class="ribbon-wrap">
+  <button class="ribbon-toggle" id="ribbonToggle" onclick="toggleRibbon()">
+    <span class="ribbon-title">Próximos vencimientos</span>
+    <span class="count-badge" id="ribbonCount">—</span>
+    <span class="earliest" id="ribbonEarliest"></span>
+    <span class="spacer"></span>
+    <span class="chevron" id="ribbonChevron">▾</span>
+  </button>
+  <div class="ribbon hidden" id="ribbon"></div>
+</div>
+
+<div class="filters">
+  <select id="fEmpresa"><option value="">Todas las empresas</option></select>
+  <select id="fEstado">
+    <option value="">Todos los estados</option>
+    <option value="pendiente">Pendiente</option>
+    <option value="pagado">Pagado</option>
+    <option value="vencido">Vencido</option>
+  </select>
+  <input type="search" id="fBuscar" placeholder="Buscar por concepto o descripción…">
+  <div class="view-toggle" id="viewToggle">
+    <button data-view="mes" class="active">Mes</button>
+    <button data-view="semana">Semana</button>
+    <button data-view="todo">Todo</button>
+  </div>
+</div>
+
+<div class="content" id="content"></div>
+
+<footer>Tablero de tesorería · Fuente: planilla "Flujo Financiero" (hoja Datos) · Los pagos marcados aquí se escriben en la planilla original.</footer>
+
+<script>
+/* ============================================================
+   CONFIGURACIÓN
+   Pegá acá la URL de tu Google Apps Script Web App una vez
+   desplegado (ver Code.gs). Mientras esté vacío, el tablero
+   funciona en MODO DEMO con datos de ejemplo, sin tocar ninguna
+   planilla real.
+   ============================================================ */
+const CONFIG = {
+  API_URL: 'https://script.google.com/macros/s/AKfycbzgSBhfSlXqQDoIDccqPHWbvGYfX7bPTpanZ3KF51D4ekxkegsF79_7SRvopf40IA3wjg/exec'
+};
+
+/* Datos de ejemplo (reflejan la estructura real de la planilla) */
+const DEMO_DATA = [
+  {rowIndex:5,empresa:'LBMDP SA',concepto:'PRESTAMO',descripcion:'HRV HERNAN 4200-1374658/3',importe:170000,vencimiento:'2026-07-20',pagado:true,fechaPago:'2026-07-18'},
+  {rowIndex:6,empresa:'LBMDP SA',concepto:'PRESTAMO',descripcion:'HRV HERNAN 4200-1374658/3',importe:170000,vencimiento:'2026-08-20',pagado:false,fechaPago:''},
+  {rowIndex:7,empresa:'LBMDP SA',concepto:'PRESTAMO',descripcion:'HRV HERNAN 4200-1374658/3',importe:170000,vencimiento:'2026-09-20',pagado:false,fechaPago:''},
+  {rowIndex:8,empresa:'LBMDP SA',concepto:'PRESTAMO',descripcion:'HRV HERNAN 4200-1374658/3',importe:170000,vencimiento:'2026-10-20',pagado:false,fechaPago:''},
+  {rowIndex:9,empresa:'LBMDP SA',concepto:'PRESTAMO',descripcion:'HRV HERNAN 4200-1374658/3',importe:170000,vencimiento:'2026-11-20',pagado:false,fechaPago:''},
+  {rowIndex:10,empresa:'LBMDP SA',concepto:'PRESTAMO',descripcion:'HRV HERNAN 4200-1374658/3',importe:170000,vencimiento:'2026-12-20',pagado:false,fechaPago:''},
+  {rowIndex:11,empresa:'LBMDP SA',concepto:'PRESTAMO',descripcion:'HRV HERNAN 4200-1374658/3',importe:170000,vencimiento:'2027-01-20',pagado:false,fechaPago:''},
+  {rowIndex:12,empresa:'LBMDP SA',concepto:'PLAN',descripcion:'ARCA T750697',importe:1900000,vencimiento:'2026-07-16',pagado:true,fechaPago:'2026-07-15'},
+  {rowIndex:13,empresa:'LBMDP SA',concepto:'PLAN',descripcion:'ARCA T750697',importe:1900000,vencimiento:'2026-08-16',pagado:false,fechaPago:''},
+  {rowIndex:14,empresa:'LBMDP SA',concepto:'PLAN',descripcion:'ARCA T750697',importe:1900000,vencimiento:'2026-09-16',pagado:false,fechaPago:''},
+  {rowIndex:15,empresa:'LBMDP SA',concepto:'PLAN',descripcion:'ARCA T750697',importe:1900000,vencimiento:'2026-10-16',pagado:false,fechaPago:''},
+  {rowIndex:16,empresa:'LBMDP SA',concepto:'PLAN',descripcion:'ARCA T750697',importe:1900000,vencimiento:'2026-11-16',pagado:false,fechaPago:''},
+  {rowIndex:17,empresa:'HFT',concepto:'PLAN',descripcion:'ARBA ANTICIPO',importe:235816,vencimiento:'2026-07-17',pagado:false,fechaPago:''},
+  {rowIndex:18,empresa:'HFT',concepto:'PLAN',descripcion:'ARBA CUOTA 1',importe:403646,vencimiento:'2026-08-10',pagado:false,fechaPago:''}
+];
+
+/* ============================================================
+   ESTADO
+   ============================================================ */
+let ALL_ROWS = [];
+let currentView = 'mes';
+let filters = { empresa:'', estado:'', busqueda:'' };
+let collapsedGroups = new Set();
+let ribbonOpen = false;
+
+const todayStr = () => new Date().toISOString().slice(0,10);
+const TODAY = todayStr();
+
+const money = n => '$ ' + Math.round(n).toLocaleString('es-AR');
+const dateLong = iso => {
+  if(!iso) return '—';
+  const [y,m,d] = iso.split('-');
+  const dt = new Date(Number(y), Number(m)-1, Number(d));
+  return dt.toLocaleDateString('es-AR', {day:'2-digit', month:'short', year:'numeric'});
+};
+const dateShort = iso => {
+  if(!iso) return '—';
+  const [y,m,d] = iso.split('-');
+  return `${d}/${m}/${y}`;
+};
+
+function estadoDe(row){
+  if(row.pagado) return 'pagado';
+  if(row.vencimiento && row.vencimiento < TODAY) return 'vencido';
+  return 'pendiente';
+}
+
+function isoWeek(dateIso){
+  const d = new Date(dateIso + 'T00:00:00');
+  const target = new Date(d.valueOf());
+  const dayNr = (d.getDay() + 6) % 7;
+  target.setDate(target.getDate() - dayNr + 3);
+  const firstThursday = new Date(target.getFullYear(),0,4);
+  const diff = (target - firstThursday) / 86400000;
+  const week = 1 + Math.round((diff - (firstThursday.getDay()+6)%7)/7);
+  return `${target.getFullYear()}-S${String(week).padStart(2,'0')}`;
+}
+function weekRangeLabel(dateIso){
+  const d = new Date(dateIso + 'T00:00:00');
+  const dayNr = (d.getDay() + 6) % 7;
+  const monday = new Date(d); monday.setDate(d.getDate() - dayNr);
+  const sunday = new Date(monday); sunday.setDate(monday.getDate() + 6);
+  const fmt = x => x.toLocaleDateString('es-AR',{day:'2-digit',month:'short'});
+  return `Semana del ${fmt(monday)} al ${fmt(sunday)}`;
+}
+function monthLabel(dateIso){
+  const [y,m] = dateIso.split('-');
+  const dt = new Date(Number(y), Number(m)-1, 1);
+  return dt.toLocaleDateString('es-AR',{month:'long', year:'numeric'});
+}
+
+/* ============================================================
+   CARGA DE DATOS
+   ============================================================ */
+async function loadData(){
+  const statusEl = document.getElementById('syncStatus');
+  const textEl = document.getElementById('syncText');
+  const bannerHost = document.getElementById('bannerHost');
+  bannerHost.innerHTML = '';
+
+  if(!CONFIG.API_URL){
+    ALL_ROWS = DEMO_DATA.map(r => ({...r}));
+    statusEl.className = 'sync-status demo';
+    textEl.textContent = 'Modo demostración';
+    bannerHost.innerHTML = `<div class="banner demo">Estás viendo datos de ejemplo. Para conectar la planilla real, desplegá el Apps Script (Code.gs) y pegá la URL en CONFIG.API_URL dentro de index.html.</div>`;
+    render();
+    return;
+  }
+
+  try{
+    textEl.textContent = 'Sincronizando…';
+    const res = await fetch(CONFIG.API_URL, {method:'GET'});
+    const json = await res.json();
+    if(!json.ok) throw new Error(json.error || 'Error desconocido');
+    ALL_ROWS = json.data;
+    statusEl.className = 'sync-status';
+    textEl.textContent = 'Conectado a la planilla · ' + new Date().toLocaleTimeString('es-AR');
+  }catch(err){
+    statusEl.className = 'sync-status error';
+    textEl.textContent = 'Error de conexión';
+    bannerHost.innerHTML = `<div class="banner error">No se pudo conectar con la planilla (${err.message}). Verificá que la URL de Apps Script en CONFIG.API_URL sea correcta y que el despliegue tenga acceso "Cualquier usuario".</div>`;
+    if(ALL_ROWS.length === 0){ ALL_ROWS = DEMO_DATA.map(r => ({...r})); }
+  }
+  render();
+}
+
+async function markAsPaid(rowIndex, fechaPago){
+  const row = ALL_ROWS.find(r => r.rowIndex === rowIndex);
+  if(!row) return;
+  row.pagado = true;
+  row.fechaPago = fechaPago;
+  render();
+  await persist(rowIndex, true, fechaPago);
+}
+async function markAsUnpaid(rowIndex){
+  const row = ALL_ROWS.find(r => r.rowIndex === rowIndex);
+  if(!row) return;
+  row.pagado = false;
+  row.fechaPago = '';
+  render();
+  await persist(rowIndex, false, '');
+}
+async function persist(rowIndex, pagado, fechaPago){
+  if(!CONFIG.API_URL) return; // modo demo: solo en memoria
+  try{
+    await fetch(CONFIG.API_URL, {
+      method:'POST',
+      headers:{'Content-Type':'text/plain;charset=utf-8'}, // evita preflight CORS con Apps Script
+      body: JSON.stringify({rowIndex, pagado, fechaPago})
+    });
+  }catch(err){
+    const bannerHost = document.getElementById('bannerHost');
+    bannerHost.innerHTML = `<div class="banner error">No se pudo guardar el cambio en la planilla (${err.message}). El tablero quedó actualizado localmente, pero convendría refrescar la página.</div>`;
+  }
+}
+
+/* ============================================================
+   RENDER
+   ============================================================ */
+function populateEmpresaFilter(){
+  const sel = document.getElementById('fEmpresa');
+  const current = sel.value;
+  const empresas = [...new Set(ALL_ROWS.map(r => r.empresa))].sort();
+  sel.innerHTML = '<option value="">Todas las empresas</option>' +
+    empresas.map(e => `<option value="${e}">${e}</option>`).join('');
+  sel.value = current;
+}
+
+function filteredRows(){
+  return ALL_ROWS.filter(r => {
+    if(filters.empresa && r.empresa !== filters.empresa) return false;
+    if(filters.estado && estadoDe(r) !== filters.estado) return false;
+    if(filters.busqueda){
+      const q = filters.busqueda.toLowerCase();
+      if(!(r.concepto.toLowerCase().includes(q) || r.descripcion.toLowerCase().includes(q) || r.empresa.toLowerCase().includes(q))) return false;
+    }
+    return true;
+  });
+}
+
+function renderRibbon(){
+  const upcoming = ALL_ROWS
+    .filter(r => !r.pagado)
+    .sort((a,b) => a.vencimiento.localeCompare(b.vencimiento))
+    .slice(0,10);
+
+  document.getElementById('ribbonCount').textContent = upcoming.length + ' pendientes';
+  document.getElementById('ribbonEarliest').textContent = upcoming.length ? '· más próximo: ' + dateShort(upcoming[0].vencimiento) : '';
+  document.getElementById('ribbonChevron').classList.toggle('open', ribbonOpen);
+
+  const ribbon = document.getElementById('ribbon');
+  ribbon.classList.toggle('hidden', !ribbonOpen);
+  if(!ribbonOpen) return;
+
+  if(upcoming.length === 0){
+    ribbon.innerHTML = '<p style="font-size:13px;color:var(--text-muted);">No hay obligaciones pendientes. Todo al día.</p>';
+    return;
+  }
+  ribbon.innerHTML = upcoming.map(r => {
+    const days = Math.round((new Date(r.vencimiento) - new Date(TODAY)) / 86400000);
+    let daysLabel, cls = '';
+    if(days < 0){ daysLabel = `Vencido hace ${Math.abs(days)}d`; cls = 'overdue'; }
+    else if(days === 0){ daysLabel = 'Vence hoy'; cls = 'overdue'; }
+    else if(days <= 7){ daysLabel = `En ${days}d`; cls = 'due-soon'; }
+    else { daysLabel = dateShort(r.vencimiento); }
+    return `<div class="stub ${cls}">
+      <div class="stub-days">${daysLabel}</div>
+      <div class="stub-empresa">${r.empresa}</div>
+      <div class="stub-concepto">${r.concepto}</div>
+      <div class="stub-importe">${money(r.importe)}</div>
+    </div>`;
+  }).join('');
+}
+
+function toggleRibbon(){
+  ribbonOpen = !ribbonOpen;
+  renderRibbon();
+}
+
+function groupRows(rows){
+  const groups = {};
+  rows.forEach(r => {
+    let key, label;
+    if(currentView === 'mes'){
+      key = r.vencimiento.slice(0,7);
+      label = monthLabel(r.vencimiento);
+    } else if(currentView === 'semana'){
+      key = isoWeek(r.vencimiento);
+      label = weekRangeLabel(r.vencimiento);
+    } else {
+      key = 'todo'; label = 'Todas las obligaciones';
+    }
+    if(!groups[key]) groups[key] = {label, rows:[]};
+    groups[key].rows.push(r);
+  });
+  return Object.entries(groups).sort((a,b) => a[0].localeCompare(b[0]));
+}
+
+function rowHtml(r){
+  const estado = estadoDe(r);
+  const badgeLabel = {pagado:'Pagado', pendiente:'Pendiente', vencido:'Vencido'}[estado];
+  const actionHtml = r.pagado
+    ? `<button class="btn-undo" onclick="markAsUnpaid(${r.rowIndex})">Deshacer</button>
+       <div class="fecha-pago-note">Pagado ${dateShort(r.fechaPago)}</div>`
+    : `<button class="btn-pay" onclick="showPayInline(${r.rowIndex})">Marcar pagado</button>`;
+  return `<tr id="row-${r.rowIndex}">
+    <td class="empresa">${r.empresa}</td>
+    <td>${r.concepto}</td>
+    <td>${r.descripcion}</td>
+    <td class="importe">${money(r.importe)}</td>
+    <td class="vencimiento">${dateShort(r.vencimiento)}</td>
+    <td><span class="badge ${estado}"><span class="dot"></span>${badgeLabel}</span></td>
+    <td class="action-cell" id="action-${r.rowIndex}">${actionHtml}</td>
+  </tr>`;
+}
+
+function render(){
+  populateEmpresaFilter();
+  const rows = filteredRows();
+  renderRibbon();
+
+  const content = document.getElementById('content');
+  if(rows.length === 0){
+    content.innerHTML = '<div class="empty-state">No hay obligaciones que coincidan con los filtros elegidos.</div>';
+    return;
+  }
+  const groups = groupRows(rows);
+  content.innerHTML = groups.map(([key, g]) => {
+    const totalG = g.rows.reduce((s,r)=>s+r.importe,0);
+    const pagadoRows = g.rows.filter(r=>r.pagado);
+    const vencidoRows = g.rows.filter(r=>!r.pagado && estadoDe(r)==='vencido');
+    const pendienteRows = g.rows.filter(r=>!r.pagado && estadoDe(r)==='pendiente');
+    const collapsed = collapsedGroups.has(key) ? 'collapsed' : '';
+    return `<div class="group ${collapsed}" data-key="${key}">
+      <div class="group-header" onclick="toggleGroup('${key}')">
+        <h3>${g.label}</h3>
+        <div class="meta">
+          <span class="gchip-count">${g.rows.length} obligaciones</span>
+          <span class="gchip total">${money(totalG)}</span>
+          ${pendienteRows.length ? `<span class="gchip pendiente">${pendienteRows.length} pend. · ${money(pendienteRows.reduce((s,r)=>s+r.importe,0))}</span>` : ''}
+          ${vencidoRows.length ? `<span class="gchip vencido">${vencidoRows.length} venc. · ${money(vencidoRows.reduce((s,r)=>s+r.importe,0))}</span>` : ''}
+          ${pagadoRows.length ? `<span class="gchip pagado">${pagadoRows.length} pag. · ${money(pagadoRows.reduce((s,r)=>s+r.importe,0))}</span>` : ''}
+          <span class="chevron">▾</span>
+        </div>
+      </div>
+      <div class="rows">
+        <table>
+          <thead><tr>
+            <th>Empresa</th><th>Concepto</th><th>Descripción</th>
+            <th style="text-align:right;">Importe</th><th>Vencimiento</th><th>Estado</th><th></th>
+          </tr></thead>
+          <tbody>${g.rows.sort((a,b)=>a.vencimiento.localeCompare(b.vencimiento)).map(rowHtml).join('')}</tbody>
+        </table>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function toggleGroup(key){
+  if(collapsedGroups.has(key)) collapsedGroups.delete(key);
+  else collapsedGroups.add(key);
+  render();
+}
+
+function showPayInline(rowIndex){
+  const cell = document.getElementById('action-' + rowIndex);
+  cell.innerHTML = `<div class="pay-inline">
+    <input type="date" id="date-${rowIndex}" value="${TODAY}">
+    <button class="confirm" onclick="confirmPay(${rowIndex})">Confirmar</button>
+    <button class="cancel" onclick="render()">Cancelar</button>
+  </div>`;
+}
+function confirmPay(rowIndex){
+  const val = document.getElementById('date-' + rowIndex).value;
+  if(!val) return;
+  markAsPaid(rowIndex, val);
+}
+
+/* ============================================================
+   EVENTOS
+   ============================================================ */
+document.getElementById('fEmpresa').addEventListener('change', e => { filters.empresa = e.target.value; render(); });
+document.getElementById('fEstado').addEventListener('change', e => { filters.estado = e.target.value; render(); });
+document.getElementById('fBuscar').addEventListener('input', e => { filters.busqueda = e.target.value; render(); });
+document.getElementById('viewToggle').addEventListener('click', e => {
+  const btn = e.target.closest('button');
+  if(!btn) return;
+  document.querySelectorAll('.view-toggle button').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  currentView = btn.dataset.view;
+  collapsedGroups.clear();
+  render();
+});
+
+loadData();
+</script>
+</body>
+</html>
