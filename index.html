@@ -187,6 +187,21 @@ tbody tr:last-child td{border-bottom:none;}
 tbody tr:hover{background:#FCFBF7;}
 td.empresa{font-weight:600;}
 td.importe{font-family:var(--font-mono);font-variant-numeric:tabular-nums;text-align:right;white-space:nowrap;}
+.importe-display{display:inline-flex;align-items:center;gap:6px;}
+.btn-edit-importe{
+  border:none;background:none;color:var(--text-muted);cursor:pointer;font-size:12px;
+  padding:2px 4px;border-radius:4px;opacity:0;transition:opacity .12s;
+}
+tr:hover .btn-edit-importe{opacity:1;}
+.btn-edit-importe:hover{background:var(--paper-2);color:var(--ink);}
+.importe-inline{display:flex;gap:5px;align-items:center;justify-content:flex-end;}
+.importe-inline input[type="number"]{
+  width:110px;font-family:var(--font-mono);font-size:12.5px;border:1px solid var(--line);border-radius:6px;
+  padding:5px 7px;text-align:right;
+}
+.importe-inline .confirm{border:none;background:var(--green);color:#fff;width:24px;height:24px;border-radius:6px;cursor:pointer;font-size:12px;}
+.importe-inline .cancel{border:none;background:none;color:var(--text-muted);width:24px;height:24px;border-radius:6px;cursor:pointer;font-size:12px;}
+.importe-inline .cancel:hover{background:var(--paper-2);}
 td.vencimiento{font-family:var(--font-mono);white-space:nowrap;color:var(--slate);}
 .badge{
   display:inline-flex;align-items:center;gap:5px;padding:3px 9px;border-radius:100px;
@@ -414,7 +429,7 @@ async function markAsPaid(rowIndex, fechaPago){
   row.pagado = true;
   row.fechaPago = fechaPago;
   render();
-  await persist(rowIndex, true, fechaPago);
+  await persist({rowIndex, action:'pago', pagado:true, fechaPago});
 }
 async function markAsUnpaid(rowIndex){
   const row = ALL_ROWS.find(r => r.rowIndex === rowIndex);
@@ -422,15 +437,22 @@ async function markAsUnpaid(rowIndex){
   row.pagado = false;
   row.fechaPago = '';
   render();
-  await persist(rowIndex, false, '');
+  await persist({rowIndex, action:'pago', pagado:false, fechaPago:''});
 }
-async function persist(rowIndex, pagado, fechaPago){
+async function updateImporte(rowIndex, importe){
+  const row = ALL_ROWS.find(r => r.rowIndex === rowIndex);
+  if(!row) return;
+  row.importe = importe;
+  render();
+  await persist({rowIndex, action:'importe', importe});
+}
+async function persist(payload){
   if(!CONFIG.API_URL) return; // modo demo: solo en memoria
   try{
     await fetch(CONFIG.API_URL, {
       method:'POST',
       headers:{'Content-Type':'text/plain;charset=utf-8'}, // evita preflight CORS con Apps Script
-      body: JSON.stringify({rowIndex, pagado, fechaPago})
+      body: JSON.stringify(payload)
     });
   }catch(err){
     const bannerHost = document.getElementById('bannerHost');
@@ -531,7 +553,12 @@ function rowHtml(r){
     <td class="empresa">${r.empresa}</td>
     <td>${r.concepto}</td>
     <td>${r.descripcion}</td>
-    <td class="importe">${money(r.importe)}</td>
+    <td class="importe" id="importe-${r.rowIndex}">
+      <span class="importe-display">
+        ${money(r.importe)}
+        <button class="btn-edit-importe" title="Corregir importe" onclick="showEditImporte(${r.rowIndex})">✎</button>
+      </span>
+    </td>
     <td class="vencimiento">${dateShort(r.vencimiento)}</td>
     <td><span class="badge ${estado}"><span class="dot"></span>${badgeLabel}</span></td>
     <td class="action-cell" id="action-${r.rowIndex}">${actionHtml}</td>
@@ -598,6 +625,24 @@ function confirmPay(rowIndex){
   const val = document.getElementById('date-' + rowIndex).value;
   if(!val) return;
   markAsPaid(rowIndex, val);
+}
+
+function showEditImporte(rowIndex){
+  const row = ALL_ROWS.find(r => r.rowIndex === rowIndex);
+  if(!row) return;
+  const cell = document.getElementById('importe-' + rowIndex);
+  cell.innerHTML = `<div class="importe-inline">
+    <input type="number" step="0.01" id="importe-input-${rowIndex}" value="${row.importe}" onkeydown="if(event.key==='Enter')confirmImporte(${rowIndex}); if(event.key==='Escape')render();">
+    <button class="confirm" onclick="confirmImporte(${rowIndex})">✓</button>
+    <button class="cancel" onclick="render()">✕</button>
+  </div>`;
+  document.getElementById(`importe-input-${rowIndex}`).focus();
+}
+function confirmImporte(rowIndex){
+  const input = document.getElementById('importe-input-' + rowIndex);
+  const val = parseFloat(input.value);
+  if(isNaN(val) || val < 0) return;
+  updateImporte(rowIndex, val);
 }
 
 /* ============================================================
