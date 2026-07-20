@@ -150,6 +150,49 @@ h1{
 .view-toggle button.active{background:var(--ink);color:#fff;}
 .view-toggle button:not(:last-child){border-right:1px solid var(--line);}
 
+.btn-new{
+  font-family:var(--font-body);font-weight:600;font-size:13px;
+  background:var(--ink);color:#fff;border:none;border-radius:7px;
+  padding:8px 14px;cursor:pointer;
+}
+.btn-new:hover{background:var(--ink-2);}
+
+/* ============ MODAL: nueva obligación ============ */
+.modal-backdrop{
+  position:fixed;inset:0;background:rgba(16,28,49,0.55);
+  display:flex;align-items:center;justify-content:center;z-index:50;padding:20px;
+}
+.modal-backdrop.hidden{display:none;}
+.modal{
+  background:var(--card);border-radius:12px;max-width:480px;width:100%;
+  max-height:90vh;overflow-y:auto;box-shadow:0 24px 60px -20px rgba(16,28,49,0.5);
+}
+.modal-header{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:16px 20px;border-bottom:1px solid var(--line);
+}
+.modal-header h3{font-family:var(--font-display);font-size:19px;margin:0;font-weight:600;}
+.modal-close{border:none;background:none;font-size:16px;color:var(--text-muted);cursor:pointer;padding:4px;}
+.modal-body{padding:18px 20px;display:flex;flex-direction:column;gap:14px;}
+.modal-body label{
+  display:flex;flex-direction:column;gap:5px;font-size:12.5px;font-weight:600;color:var(--slate);
+}
+.modal-body input[type="text"], .modal-body input[type="number"], .modal-body input[type="date"], .modal-body select{
+  font-family:var(--font-body);font-weight:400;font-size:14px;color:var(--text);
+  border:1px solid var(--line);border-radius:7px;padding:9px 11px;
+}
+.modal-body .form-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+.checkbox-row{flex-direction:row !important;align-items:center;gap:8px !important;cursor:pointer;}
+.checkbox-row input{width:auto;}
+.modal-hint{font-size:12px;color:var(--text-muted);margin:0;line-height:1.4;}
+#repiteFields{display:flex;flex-direction:column;gap:12px;background:var(--paper-2);border-radius:8px;padding:12px;}
+#repiteFields.hidden{display:none;}
+.modal-footer{
+  display:flex;justify-content:flex-end;gap:10px;padding:14px 20px;border-top:1px solid var(--line);
+}
+.modal-footer .cancel{border:1px solid var(--line);background:#fff;color:var(--text-muted);padding:9px 16px;border-radius:7px;font-size:13.5px;cursor:pointer;}
+.modal-footer .confirm{border:none;background:var(--green);color:#fff;padding:9px 18px;border-radius:7px;font-size:13.5px;font-weight:600;cursor:pointer;}
+
 /* ============ TABLE / GROUPS ============ */
 .content{max-width:1240px;margin:22px auto 60px;padding:0 32px;}
 .group{margin-bottom:22px;border:1px solid var(--line);border-radius:var(--radius);overflow:hidden;background:var(--card);}
@@ -284,6 +327,7 @@ footer{
 </div>
 
 <div class="filters">
+  <button class="btn-new" id="btnNew" onclick="openNewModal()">+ Nueva obligación</button>
   <select id="fEmpresa"><option value="">Todas las empresas</option></select>
   <select id="fEstado">
     <option value="">Todos los estados</option>
@@ -300,6 +344,57 @@ footer{
 </div>
 
 <div class="content" id="content"></div>
+
+<div class="modal-backdrop hidden" id="modalBackdrop" onclick="if(event.target===this) closeNewModal()">
+  <div class="modal">
+    <div class="modal-header">
+      <h3>Nueva obligación</h3>
+      <button class="modal-close" onclick="closeNewModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <label>Empresa / persona
+        <input type="text" id="nEmpresa" list="empresaList" placeholder="Ej: LBMDP SA">
+        <datalist id="empresaList"></datalist>
+      </label>
+      <label>Concepto
+        <input type="text" id="nConcepto" placeholder="Ej: PRESTAMO">
+      </label>
+      <label>Descripción
+        <input type="text" id="nDescripcion" placeholder="Ej: HRV HERNAN 4200-1374658/3">
+      </label>
+      <div class="form-row">
+        <label>Importe
+          <input type="number" step="0.01" id="nImporte" placeholder="0.00">
+        </label>
+        <label>Primer vencimiento
+          <input type="date" id="nVencimiento">
+        </label>
+      </div>
+      <label class="checkbox-row">
+        <input type="checkbox" id="nRepite" onchange="toggleRepiteFields()">
+        ¿Se repite todos los meses?
+      </label>
+      <div id="repiteFields" class="hidden">
+        <div class="form-row">
+          <label>Cantidad de cuotas
+            <input type="number" min="2" step="1" id="nCuotas" value="2">
+          </label>
+          <label>¿Importe igual en todas?
+            <select id="nImporteVaria">
+              <option value="igual">Sí, mismo importe</option>
+              <option value="varia">No, varía (ajusto después)</option>
+            </select>
+          </label>
+        </div>
+        <p class="modal-hint">Se van a crear las cuotas con vencimiento el mismo día de cada mes siguiente. Si el importe varía, quedan cargadas con el valor de la primera cuota y las corregís después con el lápiz de cada fila.</p>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="cancel" onclick="closeNewModal()">Cancelar</button>
+      <button class="confirm" onclick="submitNewObligacion()">Crear</button>
+    </div>
+  </div>
+</div>
 
 <footer>Tablero de tesorería · Fuente: planilla "Flujo Financiero" (hoja Datos) · Los pagos marcados aquí se escriben en la planilla original.</footer>
 
@@ -660,6 +755,100 @@ document.getElementById('viewToggle').addEventListener('click', e => {
   collapsedGroups.clear();
   render();
 });
+
+/* ============================================================
+   NUEVA OBLIGACIÓN
+   ============================================================ */
+function openNewModal(){
+  document.getElementById('nEmpresa').value = '';
+  document.getElementById('nConcepto').value = '';
+  document.getElementById('nDescripcion').value = '';
+  document.getElementById('nImporte').value = '';
+  document.getElementById('nVencimiento').value = TODAY;
+  document.getElementById('nRepite').checked = false;
+  document.getElementById('nCuotas').value = 2;
+  document.getElementById('nImporteVaria').value = 'igual';
+  document.getElementById('repiteFields').classList.add('hidden');
+
+  const empresas = [...new Set(ALL_ROWS.map(r => r.empresa))].sort();
+  document.getElementById('empresaList').innerHTML = empresas.map(e => `<option value="${e}">`).join('');
+
+  document.getElementById('modalBackdrop').classList.remove('hidden');
+  document.getElementById('nEmpresa').focus();
+}
+function closeNewModal(){
+  document.getElementById('modalBackdrop').classList.add('hidden');
+}
+function toggleRepiteFields(){
+  document.getElementById('repiteFields').classList.toggle('hidden', !document.getElementById('nRepite').checked);
+}
+
+function addMonthsIso(iso, n){
+  const [y,m,d] = iso.split('-').map(Number);
+  const dt = new Date(y, m - 1 + n, d);
+  // Si el mes destino no tiene ese día (ej. 31), JS lo corrige al mes siguiente;
+  // lo llevamos al último día del mes destino en ese caso.
+  if(dt.getMonth() !== ((m - 1 + n) % 12 + 12) % 12){
+    dt.setDate(0); // último día del mes anterior (el mes destino correcto)
+  }
+  const yy = dt.getFullYear();
+  const mm = String(dt.getMonth()+1).padStart(2,'0');
+  const dd = String(dt.getDate()).padStart(2,'0');
+  return `${yy}-${mm}-${dd}`;
+}
+
+async function submitNewObligacion(){
+  const empresa = document.getElementById('nEmpresa').value.trim();
+  const concepto = document.getElementById('nConcepto').value.trim();
+  const descripcion = document.getElementById('nDescripcion').value.trim();
+  const importe = parseFloat(document.getElementById('nImporte').value);
+  const vencimiento = document.getElementById('nVencimiento').value;
+  const repite = document.getElementById('nRepite').checked;
+  const cuotas = repite ? Math.max(2, parseInt(document.getElementById('nCuotas').value, 10) || 2) : 1;
+
+  if(!empresa || !concepto || !vencimiento || isNaN(importe) || importe < 0){
+    alert('Completá al menos empresa, concepto, importe y fecha de vencimiento.');
+    return;
+  }
+
+  const nuevas = [];
+  for(let i = 0; i < cuotas; i++){
+    nuevas.push({
+      empresa, concepto, descripcion,
+      importe,
+      vencimiento: i === 0 ? vencimiento : addMonthsIso(vencimiento, i)
+    });
+  }
+
+  closeNewModal();
+
+  if(!CONFIG.API_URL){
+    // Modo demo: agregamos en memoria con rowIndex ficticio
+    let nextIdx = Math.max(0, ...ALL_ROWS.map(r=>r.rowIndex)) + 1;
+    nuevas.forEach(n => {
+      ALL_ROWS.push({ rowIndex: nextIdx++, ...n, pagado:false, fechaPago:'' });
+    });
+    render();
+    return;
+  }
+
+  try{
+    const res = await fetch(CONFIG.API_URL, {
+      method:'POST',
+      headers:{'Content-Type':'text/plain;charset=utf-8'},
+      body: JSON.stringify({ action:'crear', filas: nuevas })
+    });
+    const json = await res.json();
+    if(!json.ok) throw new Error(json.error || 'Error desconocido');
+    json.rowIndexes.forEach((rowIndex, i) => {
+      ALL_ROWS.push({ rowIndex, ...nuevas[i], pagado:false, fechaPago:'' });
+    });
+    render();
+  }catch(err){
+    const bannerHost = document.getElementById('bannerHost');
+    bannerHost.innerHTML = `<div class="banner error">No se pudo crear la obligación en la planilla (${err.message}). Probá recargar la página e intentar de nuevo.</div>`;
+  }
+}
 
 loadData();
 </script>
