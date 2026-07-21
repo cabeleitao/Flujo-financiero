@@ -340,8 +340,48 @@ footer{
 .proy-table-card tbody tr:last-child td{border-bottom:none;}
 .proy-table-card tbody td:not(:first-child){text-align:right;}
 .proy-table-card tfoot td{font-weight:700;border-top:2px solid var(--ink);}
+.sim-table tbody td{font-family:var(--font-body) !important;font-variant-numeric:normal;text-align:left !important;}
+.sim-table tbody td:nth-child(4){font-family:var(--font-mono) !important;font-variant-numeric:tabular-nums;text-align:right !important;}
+
+/* ============ SIMULADOR ============ */
+.sim-wrap{
+  max-width:1240px;margin:26px auto 60px;padding:0 32px;
+  display:grid;grid-template-columns:280px 1fr;gap:20px;align-items:start;
+}
+.sim-panel{
+  background:var(--card);border:1px solid var(--line);border-radius:var(--radius);
+  padding:18px;position:sticky;top:20px;display:flex;flex-direction:column;gap:14px;
+}
+.sim-panel label{
+  display:flex;flex-direction:column;gap:5px;font-size:12.5px;font-weight:600;color:var(--slate);
+}
+.sim-panel input[type="number"]{
+  font-family:var(--font-mono);font-weight:500;font-size:15px;color:var(--text);
+  border:1px solid var(--line);border-radius:7px;padding:9px 11px;
+}
+.sim-main{display:flex;flex-direction:column;gap:18px;min-width:0;}
+.sim-result-card{
+  background:var(--card);border:1px solid var(--line);border-radius:var(--radius);
+  padding:20px 22px;display:flex;flex-direction:column;gap:10px;
+}
+.sim-row{display:flex;justify-content:space-between;align-items:center;font-size:14px;}
+.sim-row .sim-label{color:var(--slate);}
+.sim-row .sim-value{font-family:var(--font-mono);font-weight:600;font-variant-numeric:tabular-nums;}
+.sim-row.negative .sim-value{color:var(--red);}
+.sim-divider{height:1px;background:var(--line);margin:4px 0;}
+.sim-row.resultado{font-size:19px;padding-top:4px;}
+.sim-row.resultado .sim-label{font-family:var(--font-display);font-weight:600;color:var(--text);}
+.sim-row.resultado .sim-value{font-size:22px;}
+.sim-result-card.ok .sim-row.resultado .sim-value{color:var(--green);}
+.sim-result-card.falta .sim-row.resultado .sim-value{color:var(--red);}
+.sim-status-pill{
+  align-self:flex-start;font-size:12px;font-weight:600;padding:4px 12px;border-radius:100px;margin-top:2px;
+}
+.sim-result-card.ok .sim-status-pill{background:var(--green-bg);color:var(--green);}
+.sim-result-card.falta .sim-status-pill{background:var(--red-bg);color:var(--red);}
 
 @media (max-width:760px){
+  .sim-wrap{grid-template-columns:1fr;padding-left:18px;padding-right:18px;}
   .proy-wrap{grid-template-columns:1fr;padding-left:18px;padding-right:18px;}
   .tabs-inner{padding-left:18px;padding-right:18px;}
   header.top{padding:22px 18px 18px;}
@@ -370,6 +410,7 @@ footer{
   <div class="tabs-inner">
     <button class="tab active" id="tabDetalle" onclick="switchTab('detalle')">Detalle</button>
     <button class="tab" id="tabProyeccion" onclick="switchTab('proyeccion')">Proyección</button>
+    <button class="tab" id="tabSimulador" onclick="switchTab('simulador')">Simulador</button>
   </div>
 </div>
 
@@ -433,6 +474,34 @@ footer{
             <th style="text-align:right;">Total</th>
           </tr></thead>
           <tbody id="proyTableBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="viewSimulador" class="hidden">
+  <div class="sim-wrap">
+    <div class="sim-panel">
+      <p class="proy-panel-title">Variables de la simulación</p>
+      <label>Posición de caja actual
+        <input type="number" step="0.01" id="simCaja" placeholder="0.00" oninput="renderSimulador()">
+      </label>
+      <label>Cheques a pagar hasta fin de mes
+        <input type="number" step="0.01" id="simCheques" placeholder="0.00" oninput="renderSimulador()">
+      </label>
+      <p class="modal-hint">Las obligaciones pendientes o vencidas con vencimiento hasta el último día de este mes se suman automáticamente desde la planilla — no hace falta cargarlas a mano.</p>
+    </div>
+    <div class="sim-main">
+      <div class="sim-result-card" id="simResultCard"></div>
+      <div class="proy-table-card">
+        <p class="proy-panel-title" style="padding:16px 16px 0;">Obligaciones consideradas (vencidas o con vencimiento hasta fin de mes)</p>
+        <table class="sim-table">
+          <thead><tr>
+            <th>Empresa</th><th>Concepto</th><th>Descripción</th>
+            <th style="text-align:right;">Importe</th><th>Vencimiento</th><th>Estado</th>
+          </tr></thead>
+          <tbody id="simTableBody"></tbody>
         </table>
       </div>
     </div>
@@ -955,9 +1024,12 @@ function switchTab(tab){
   currentTab = tab;
   document.getElementById('viewDetalle').classList.toggle('hidden', tab !== 'detalle');
   document.getElementById('viewProyeccion').classList.toggle('hidden', tab !== 'proyeccion');
+  document.getElementById('viewSimulador').classList.toggle('hidden', tab !== 'simulador');
   document.getElementById('tabDetalle').classList.toggle('active', tab === 'detalle');
   document.getElementById('tabProyeccion').classList.toggle('active', tab === 'proyeccion');
+  document.getElementById('tabSimulador').classList.toggle('active', tab === 'simulador');
   if(tab === 'proyeccion') renderProyeccion();
+  if(tab === 'simulador') renderSimulador();
 }
 
 /* ============================================================
@@ -1072,6 +1144,65 @@ function renderProyeccion(){
 }
 
 loadData();
+
+/* ============================================================
+   SIMULADOR
+   ============================================================ */
+function endOfMonthIso(){
+  const d = new Date(TODAY + 'T00:00:00');
+  const last = new Date(d.getFullYear(), d.getMonth() + 1, 0);
+  const yy = last.getFullYear();
+  const mm = String(last.getMonth()+1).padStart(2,'0');
+  const dd = String(last.getDate()).padStart(2,'0');
+  return `${yy}-${mm}-${dd}`;
+}
+
+function obligacionesHastaFinDeMes(){
+  const limite = endOfMonthIso();
+  return ALL_ROWS
+    .filter(r => !r.pagado && r.vencimiento <= limite)
+    .sort((a,b) => a.vencimiento.localeCompare(b.vencimiento));
+}
+
+function renderSimulador(){
+  const caja = parseFloat(document.getElementById('simCaja').value) || 0;
+  const cheques = parseFloat(document.getElementById('simCheques').value) || 0;
+  const obligaciones = obligacionesHastaFinDeMes();
+  const totalObligaciones = obligaciones.reduce((s,r) => s + r.importe, 0);
+  const resultado = caja - cheques - totalObligaciones;
+
+  const card = document.getElementById('simResultCard');
+  card.className = 'sim-result-card ' + (resultado >= 0 ? 'ok' : 'falta');
+  card.innerHTML = `
+    <div class="sim-row"><span class="sim-label">Posición de caja</span><span class="sim-value">${money(caja)}</span></div>
+    <div class="sim-row negative"><span class="sim-label">(–) Cheques a pagar hasta fin de mes</span><span class="sim-value">${money(cheques)}</span></div>
+    <div class="sim-row negative"><span class="sim-label">(–) Obligaciones pendientes/vencidas hasta fin de mes</span><span class="sim-value">${money(totalObligaciones)}</span></div>
+    <div class="sim-divider"></div>
+    <div class="sim-row resultado">
+      <span class="sim-label">${resultado >= 0 ? 'Sobra' : 'Falta'}</span>
+      <span class="sim-value">${money(Math.abs(resultado))}</span>
+    </div>
+    <span class="sim-status-pill">${resultado >= 0 ? 'La caja alcanza' : 'La caja no alcanza'}</span>
+  `;
+
+  const body = document.getElementById('simTableBody');
+  if(obligaciones.length === 0){
+    body.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--text-muted);padding:24px;font-family:var(--font-body);">No hay obligaciones pendientes ni vencidas hasta fin de mes.</td></tr>';
+    return;
+  }
+  body.innerHTML = obligaciones.map(r => {
+    const estado = estadoDe(r);
+    const badgeLabel = {pagado:'Pagado', pendiente:'Pendiente', vencido:'Vencido'}[estado];
+    return `<tr>
+      <td>${r.empresa}</td>
+      <td>${r.concepto}</td>
+      <td>${r.descripcion}</td>
+      <td>${money(r.importe)}</td>
+      <td>${dateShort(r.vencimiento)}</td>
+      <td><span class="badge ${estado}"><span class="dot"></span>${badgeLabel}</span></td>
+    </tr>`;
+  }).join('');
+}
 </script>
 </body>
 </html>
