@@ -7,6 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Bricolage+Grotesque:opsz,wght@12..96,500..800&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.4/chart.umd.min.js"></script>
 <style>
 /* ============ TOKENS ============ */
 :root{
@@ -290,7 +291,58 @@ footer{
   font-size:12px;color:var(--text-muted);font-family:var(--font-mono);
 }
 
+/* ============ TABS ============ */
+.tabs{background:var(--ink-2);border-bottom:1px solid rgba(255,255,255,0.08);}
+.tabs-inner{max-width:1240px;margin:0 auto;padding:0 32px;display:flex;gap:4px;}
+.tab{
+  font-family:var(--font-switch);font-weight:600;font-size:13px;letter-spacing:.02em;
+  background:none;border:none;color:#9FB0C8;padding:12px 16px;cursor:pointer;
+  border-bottom:2px solid transparent;
+}
+.tab.active{color:#fff;border-bottom-color:var(--amber);}
+.tab:hover:not(.active){color:#D9E2EF;}
+
+/* ============ PROYECCIÓN ============ */
+.proy-wrap{
+  max-width:1240px;margin:26px auto 60px;padding:0 32px;
+  display:grid;grid-template-columns:220px 1fr;gap:20px;align-items:start;
+}
+.proy-panel{
+  background:var(--card);border:1px solid var(--line);border-radius:var(--radius);
+  padding:16px;position:sticky;top:20px;
+}
+.proy-panel-title{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--text-muted);font-weight:600;margin:0 0 10px;}
+.proy-concepto-actions{display:flex;gap:8px;margin-bottom:10px;}
+.proy-concepto-actions button{
+  font-size:11px;border:1px solid var(--line);background:var(--paper-2);color:var(--slate);
+  border-radius:6px;padding:4px 8px;cursor:pointer;
+}
+.proy-concepto-list{display:flex;flex-direction:column;gap:8px;max-height:360px;overflow-y:auto;}
+.proy-concepto-list label{
+  display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;color:var(--text);
+}
+.proy-main{display:flex;flex-direction:column;gap:18px;min-width:0;}
+.proy-chart-card, .proy-table-card{
+  background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:18px;
+}
+.chart-wrap{position:relative;height:340px;}
+.proy-table-card table{width:100%;border-collapse:collapse;}
+.proy-table-card thead th{
+  text-align:left;font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--text-muted);
+  font-weight:600;padding:8px 10px;border-bottom:1px solid var(--line);
+}
+.proy-table-card tbody td{
+  padding:9px 10px;border-bottom:1px solid var(--line);font-family:var(--font-mono);font-size:13px;
+  font-variant-numeric:tabular-nums;
+}
+.proy-table-card tbody td:first-child{font-family:var(--font-body);font-weight:600;text-transform:capitalize;}
+.proy-table-card tbody tr:last-child td{border-bottom:none;}
+.proy-table-card tbody td:not(:first-child){text-align:right;}
+.proy-table-card tfoot td{font-weight:700;border-top:2px solid var(--ink);}
+
 @media (max-width:760px){
+  .proy-wrap{grid-template-columns:1fr;padding-left:18px;padding-right:18px;}
+  .tabs-inner{padding-left:18px;padding-right:18px;}
   header.top{padding:22px 18px 18px;}
   .ribbon-wrap,.filters,.content,.banner,footer{padding-left:18px;padding-right:18px;}
   thead{display:none;}
@@ -313,7 +365,16 @@ footer{
   </div>
 </header>
 
+<div class="tabs">
+  <div class="tabs-inner">
+    <button class="tab active" id="tabDetalle" onclick="switchTab('detalle')">Detalle</button>
+    <button class="tab" id="tabProyeccion" onclick="switchTab('proyeccion')">Proyección</button>
+  </div>
+</div>
+
 <div id="bannerHost"></div>
+
+<div id="viewDetalle">
 
 <div class="ribbon-wrap">
   <button class="ribbon-toggle" id="ribbonToggle" onclick="toggleRibbon()">
@@ -344,6 +405,38 @@ footer{
 </div>
 
 <div class="content" id="content"></div>
+
+</div>
+
+<div id="viewProyeccion" class="hidden">
+  <div class="proy-wrap">
+    <div class="proy-panel">
+      <p class="proy-panel-title">Filtrar por concepto</p>
+      <div class="proy-concepto-actions">
+        <button onclick="proySelectAll(true)">Todos</button>
+        <button onclick="proySelectAll(false)">Ninguno</button>
+      </div>
+      <div id="proyConceptoList" class="proy-concepto-list"></div>
+    </div>
+    <div class="proy-main">
+      <div class="proy-chart-card">
+        <div class="chart-wrap"><canvas id="proyChart"></canvas></div>
+      </div>
+      <div class="proy-table-card">
+        <table>
+          <thead><tr>
+            <th>Mes</th>
+            <th style="text-align:right;">Pendiente</th>
+            <th style="text-align:right;">Vencido</th>
+            <th style="text-align:right;">Pagado</th>
+            <th style="text-align:right;">Total</th>
+          </tr></thead>
+          <tbody id="proyTableBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
 
 <div class="modal-backdrop hidden" id="modalBackdrop" onclick="if(event.target===this) closeNewModal()">
   <div class="modal">
@@ -436,6 +529,10 @@ let currentView = 'mes';
 let filters = { empresa:'', estado:'', busqueda:'' };
 let collapsedGroups = new Set();
 let ribbonOpen = false;
+let currentTab = 'detalle';
+let proySelectedConceptos = null; // se inicializa con todos los conceptos la primera vez
+let proyConceptoKnown = new Set();
+let proyChartInstance = null;
 
 const todayStr = () => new Date().toISOString().slice(0,10);
 const TODAY = todayStr();
@@ -848,6 +945,129 @@ async function submitNewObligacion(){
     const bannerHost = document.getElementById('bannerHost');
     bannerHost.innerHTML = `<div class="banner error">No se pudo crear la obligación en la planilla (${err.message}). Probá recargar la página e intentar de nuevo.</div>`;
   }
+}
+
+/* ============================================================
+   PESTAÑAS
+   ============================================================ */
+function switchTab(tab){
+  currentTab = tab;
+  document.getElementById('viewDetalle').classList.toggle('hidden', tab !== 'detalle');
+  document.getElementById('viewProyeccion').classList.toggle('hidden', tab !== 'proyeccion');
+  document.getElementById('tabDetalle').classList.toggle('active', tab === 'detalle');
+  document.getElementById('tabProyeccion').classList.toggle('active', tab === 'proyeccion');
+  if(tab === 'proyeccion') renderProyeccion();
+}
+
+/* ============================================================
+   PROYECCIÓN
+   ============================================================ */
+function allConceptos(){
+  return [...new Set(ALL_ROWS.map(r => r.concepto))].sort();
+}
+
+function populateProyeccionConceptos(){
+  const conceptos = allConceptos();
+  if(proySelectedConceptos === null){
+    proySelectedConceptos = new Set(conceptos);
+  } else {
+    conceptos.forEach(c => { if(!proyConceptoKnown.has(c)) proySelectedConceptos.add(c); });
+  }
+  conceptos.forEach(c => proyConceptoKnown.add(c));
+
+  const list = document.getElementById('proyConceptoList');
+  list.innerHTML = conceptos.map(c => `
+    <label>
+      <input type="checkbox" value="${c}" ${proySelectedConceptos.has(c) ? 'checked' : ''} onchange="toggleProyConcepto('${c.replace(/'/g,"\\'")}', this.checked)">
+      ${c}
+    </label>
+  `).join('') || '<p style="font-size:12px;color:var(--text-muted);">Sin conceptos cargados.</p>';
+}
+
+function toggleProyConcepto(concepto, checked){
+  if(checked) proySelectedConceptos.add(concepto);
+  else proySelectedConceptos.delete(concepto);
+  renderProyeccion();
+}
+
+function proySelectAll(all){
+  proySelectedConceptos = all ? new Set(allConceptos()) : new Set();
+  renderProyeccion();
+}
+
+function computeProyeccionData(){
+  const rows = ALL_ROWS.filter(r => proySelectedConceptos && proySelectedConceptos.has(r.concepto));
+  const map = {};
+  rows.forEach(r => {
+    const key = r.vencimiento.slice(0,7);
+    if(!map[key]) map[key] = { pendiente:0, vencido:0, pagado:0 };
+    map[key][estadoDe(r)] += r.importe;
+  });
+  return Object.keys(map).sort().map(key => ({
+    key,
+    label: monthLabel(key + '-01'),
+    pendiente: map[key].pendiente,
+    vencido: map[key].vencido,
+    pagado: map[key].pagado,
+    total: map[key].pendiente + map[key].vencido + map[key].pagado
+  }));
+}
+
+function renderProyeccionChart(data){
+  const canvas = document.getElementById('proyChart');
+  if(proyChartInstance){ proyChartInstance.destroy(); proyChartInstance = null; }
+  if(typeof Chart === 'undefined') return; // sin conexión al CDN de Chart.js
+
+  const ctx = canvas.getContext('2d');
+  const mkDataset = (key, label, color) => ({
+    label, data: data.map(d => d[key]), backgroundColor: color, borderRadius:3, maxBarThickness:56
+  });
+
+  proyChartInstance = new Chart(ctx, {
+    type:'bar',
+    data:{
+      labels: data.map(d => d.label),
+      datasets:[
+        mkDataset('pendiente','Pendiente','#C1811F'),
+        mkDataset('vencido','Vencido','#A63B32'),
+        mkDataset('pagado','Pagado','#2E6E4E')
+      ]
+    },
+    options:{
+      responsive:true,
+      maintainAspectRatio:false,
+      scales:{
+        x:{ stacked:true, grid:{display:false}, ticks:{font:{family:'IBM Plex Mono', size:11}} },
+        y:{ stacked:true, grid:{color:'#DFD8C6'}, ticks:{ font:{family:'IBM Plex Mono', size:11}, callback: v => '$' + Number(v).toLocaleString('es-AR') } }
+      },
+      plugins:{
+        legend:{ position:'bottom', labels:{ font:{family:'Inter', size:12}, boxWidth:12, boxHeight:12, usePointStyle:true, pointStyle:'rectRounded' } },
+        tooltip:{ callbacks:{ label: c => c.dataset.label + ': ' + money(c.parsed.y) } }
+      }
+    }
+  });
+}
+
+function renderProyeccionTable(data){
+  const body = document.getElementById('proyTableBody');
+  if(data.length === 0){
+    body.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--text-muted);padding:24px;font-family:var(--font-body);">No hay obligaciones para los conceptos seleccionados.</td></tr>';
+    return;
+  }
+  body.innerHTML = data.map(d => `<tr>
+    <td>${d.label}</td>
+    <td>${money(d.pendiente)}</td>
+    <td>${money(d.vencido)}</td>
+    <td>${money(d.pagado)}</td>
+    <td>${money(d.total)}</td>
+  </tr>`).join('');
+}
+
+function renderProyeccion(){
+  populateProyeccionConceptos();
+  const data = computeProyeccionData();
+  renderProyeccionChart(data);
+  renderProyeccionTable(data);
 }
 
 loadData();
