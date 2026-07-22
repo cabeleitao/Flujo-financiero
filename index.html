@@ -159,6 +159,29 @@ h1{
 }
 .btn-new:hover{background:var(--ink-2);}
 
+/* ============ MULTI-SELECT DROPDOWN (filtros) ============ */
+.ms-dropdown{position:relative;}
+.ms-btn{
+  font-family:var(--font-body);font-size:13px;color:var(--text);
+  border:1px solid var(--line);border-radius:7px;background:var(--card);
+  padding:8px 12px;cursor:pointer;display:flex;align-items:center;gap:8px;white-space:nowrap;
+}
+.ms-btn:hover{background:var(--paper-2);}
+.ms-chevron{color:var(--text-muted);font-size:11px;}
+.ms-panel{
+  position:absolute;top:calc(100% + 6px);left:0;z-index:30;min-width:220px;
+  background:var(--card);border:1px solid var(--line);border-radius:8px;
+  box-shadow:0 12px 30px -10px rgba(16,28,49,0.3);padding:12px;
+}
+.ms-panel.hidden{display:none;}
+.ms-actions{display:flex;gap:8px;margin-bottom:10px;}
+.ms-actions button{
+  font-size:11px;border:1px solid var(--line);background:var(--paper-2);color:var(--slate);
+  border-radius:6px;padding:4px 8px;cursor:pointer;
+}
+.ms-list{display:flex;flex-direction:column;gap:8px;max-height:260px;overflow-y:auto;}
+.ms-list label{display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;color:var(--text);white-space:nowrap;}
+
 /* ============ MODAL: nueva obligación ============ */
 .modal-backdrop{
   position:fixed;inset:0;background:rgba(16,28,49,0.55);
@@ -204,8 +227,8 @@ h1{
   border-bottom:1px solid var(--line);
 }
 .group-header h3{
-  font-family:var(--font-display);font-size:17px;font-weight:600;margin:0;
-  text-transform:capitalize;
+  font-family:var(--font-switch);font-size:19px;font-weight:600;margin:0;
+  text-transform:capitalize;letter-spacing:.01em;
 }
 .group-header .meta{display:flex;gap:8px;align-items:center;flex-wrap:wrap;}
 .group-header .chevron{transition:transform .15s;color:var(--text-muted);margin-left:2px;}
@@ -431,13 +454,33 @@ footer{
 
 <div class="filters">
   <button class="btn-new" id="btnNew" onclick="openNewModal()">+ Nueva obligación</button>
-  <select id="fEmpresa"><option value="">Todas las empresas</option></select>
-  <select id="fEstado">
-    <option value="">Todos los estados</option>
-    <option value="pendiente">Pendiente</option>
-    <option value="pagado">Pagado</option>
-    <option value="vencido">Vencido</option>
-  </select>
+
+  <div class="ms-dropdown" id="msEmpresa">
+    <button class="ms-btn" onclick="toggleMsDropdown('msEmpresa')">
+      <span id="msEmpresaLabel">Todas las empresas</span><span class="ms-chevron">▾</span>
+    </button>
+    <div class="ms-panel hidden">
+      <div class="ms-actions">
+        <button onclick="msSelectAll('empresas', true)">Todas</button>
+        <button onclick="msSelectAll('empresas', false)">Ninguna</button>
+      </div>
+      <div class="ms-list" id="msEmpresaList"></div>
+    </div>
+  </div>
+
+  <div class="ms-dropdown" id="msEstado">
+    <button class="ms-btn" onclick="toggleMsDropdown('msEstado')">
+      <span id="msEstadoLabel">Todos los estados</span><span class="ms-chevron">▾</span>
+    </button>
+    <div class="ms-panel hidden">
+      <div class="ms-actions">
+        <button onclick="msSelectAll('estados', true)">Todos</button>
+        <button onclick="msSelectAll('estados', false)">Ninguno</button>
+      </div>
+      <div class="ms-list" id="msEstadoList"></div>
+    </div>
+  </div>
+
   <input type="search" id="fBuscar" placeholder="Buscar por concepto o descripción…">
   <div class="view-toggle" id="viewToggle">
     <button data-view="mes" class="active">Mes</button>
@@ -596,8 +639,11 @@ const DEMO_DATA = [
    ============================================================ */
 let ALL_ROWS = [];
 let currentView = 'mes';
-let filters = { empresa:'', estado:'', busqueda:'' };
+let filters = { empresas: null, estados: null, busqueda:'' }; // Set|null (null = todavía no inicializado)
+let empresasKnown = new Set();
+let estadosKnown = false; // los estados son fijos, se inicializan una sola vez
 let collapsedGroups = new Set();
+let groupKeysSeen = new Set(); // para colapsar los períodos por defecto la primera vez que aparecen
 let ribbonOpen = false;
 let currentTab = 'detalle';
 let proySelectedConceptos = null; // se inicializa con todos los conceptos la primera vez
@@ -726,18 +772,63 @@ async function persist(payload){
    RENDER
    ============================================================ */
 function populateEmpresaFilter(){
-  const sel = document.getElementById('fEmpresa');
-  const current = sel.value;
   const empresas = [...new Set(ALL_ROWS.map(r => r.empresa))].sort();
-  sel.innerHTML = '<option value="">Todas las empresas</option>' +
-    empresas.map(e => `<option value="${e}">${e}</option>`).join('');
-  sel.value = current;
+  if(filters.empresas === null){
+    filters.empresas = new Set(empresas);
+  } else {
+    empresas.forEach(e => { if(!empresasKnown.has(e)) filters.empresas.add(e); });
+  }
+  empresas.forEach(e => empresasKnown.add(e));
+
+  document.getElementById('msEmpresaList').innerHTML = empresas.map(e => `
+    <label><input type="checkbox" value="${e}" ${filters.empresas.has(e) ? 'checked' : ''} onchange="toggleMsOption('empresas','${e.replace(/'/g,"\\'")}', this.checked)"> ${e}</label>
+  `).join('') || '<p style="font-size:12px;color:var(--text-muted);">Sin empresas cargadas.</p>';
+
+  const label = document.getElementById('msEmpresaLabel');
+  if(filters.empresas.size === empresas.length) label.textContent = 'Todas las empresas';
+  else if(filters.empresas.size === 0) label.textContent = 'Ninguna empresa';
+  else label.textContent = filters.empresas.size + ' empresas';
+
+  if(!estadosKnown){
+    estadosKnown = true;
+    filters.estados = new Set(['pendiente','pagado','vencido']);
+  }
+  const estadoLabels = {pendiente:'Pendiente', pagado:'Pagado', vencido:'Vencido'};
+  document.getElementById('msEstadoList').innerHTML = Object.keys(estadoLabels).map(k => `
+    <label><input type="checkbox" value="${k}" ${filters.estados.has(k) ? 'checked' : ''} onchange="toggleMsOption('estados','${k}', this.checked)"> ${estadoLabels[k]}</label>
+  `).join('');
+  const elabel = document.getElementById('msEstadoLabel');
+  if(filters.estados.size === 3) elabel.textContent = 'Todos los estados';
+  else if(filters.estados.size === 0) elabel.textContent = 'Ningún estado';
+  else elabel.textContent = filters.estados.size + ' estados';
 }
+
+function toggleMsOption(kind, value, checked){
+  if(checked) filters[kind].add(value);
+  else filters[kind].delete(value);
+  render();
+}
+function msSelectAll(kind, all){
+  if(kind === 'empresas') filters.empresas = all ? new Set(empresasKnown) : new Set();
+  else filters.estados = all ? new Set(['pendiente','pagado','vencido']) : new Set();
+  render();
+}
+function toggleMsDropdown(id){
+  document.querySelectorAll('.ms-dropdown').forEach(d => {
+    if(d.id !== id) d.querySelector('.ms-panel').classList.add('hidden');
+  });
+  document.getElementById(id).querySelector('.ms-panel').classList.toggle('hidden');
+}
+document.addEventListener('click', e => {
+  if(!e.target.closest('.ms-dropdown')){
+    document.querySelectorAll('.ms-panel').forEach(p => p.classList.add('hidden'));
+  }
+});
 
 function filteredRows(){
   return ALL_ROWS.filter(r => {
-    if(filters.empresa && r.empresa !== filters.empresa) return false;
-    if(filters.estado && estadoDe(r) !== filters.estado) return false;
+    if(filters.empresas && !filters.empresas.has(r.empresa)) return false;
+    if(filters.estados && !filters.estados.has(estadoDe(r))) return false;
     if(filters.busqueda){
       const q = filters.busqueda.toLowerCase();
       if(!(r.concepto.toLowerCase().includes(q) || r.descripcion.toLowerCase().includes(q) || r.empresa.toLowerCase().includes(q))) return false;
@@ -838,6 +929,12 @@ function render(){
     return;
   }
   const groups = groupRows(rows);
+  groups.forEach(([key]) => {
+    if(!groupKeysSeen.has(key)){
+      groupKeysSeen.add(key);
+      collapsedGroups.add(key); // los períodos arrancan minimizados por defecto
+    }
+  });
   content.innerHTML = groups.map(([key, g]) => {
     const totalG = g.rows.reduce((s,r)=>s+r.importe,0);
     const pagadoRows = g.rows.filter(r=>r.pagado);
@@ -910,8 +1007,6 @@ function confirmImporte(rowIndex){
 /* ============================================================
    EVENTOS
    ============================================================ */
-document.getElementById('fEmpresa').addEventListener('change', e => { filters.empresa = e.target.value; render(); });
-document.getElementById('fEstado').addEventListener('change', e => { filters.estado = e.target.value; render(); });
 document.getElementById('fBuscar').addEventListener('input', e => { filters.busqueda = e.target.value; render(); });
 document.getElementById('viewToggle').addEventListener('click', e => {
   const btn = e.target.closest('button');
@@ -920,6 +1015,7 @@ document.getElementById('viewToggle').addEventListener('click', e => {
   btn.classList.add('active');
   currentView = btn.dataset.view;
   collapsedGroups.clear();
+  groupKeysSeen.clear();
   render();
 });
 
